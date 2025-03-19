@@ -85,5 +85,9 @@
   },
     "engines": {
       "node": "22.x"
+    },
+    "resolutions": {
+      "@next/swc-linux-x64-gnu": "canary"
     }
+  
 }
