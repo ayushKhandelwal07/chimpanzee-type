@@ -8,7 +8,6 @@ module.exports = {
   extends: [
     'eslint:recommended',
     'next',
-    "next/babel",
     'plugin:@typescript-eslint/recommended',
     'prettier',
   ],
