@@ -1,3 +1,6 @@
 
+const Account = () => {
+  return <></>;
+};
 
-export {};
+export default Account; // ✅ Ensure this default export exists
