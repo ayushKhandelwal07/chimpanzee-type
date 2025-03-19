@@ -82,5 +82,8 @@
     "src/**/*.{json,css,scss,md}": [
       "prettier -w"
     ]
-  }
+  },
+    "engines": {
+      "node": "22.x"
+    }
 }
