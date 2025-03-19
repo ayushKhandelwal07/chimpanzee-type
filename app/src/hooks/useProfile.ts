@@ -15,19 +15,35 @@ type ProfileStatsPayload = {
 };
 
 export const getCurrentUser = async (): Promise<UserPayload | null> => {
-  const res = await fetch(`${API_URL}/currentUser`);
-  if (!res.ok) {
-    throw new Error('An error occurred while fetching the data.');
+  // Return null if no API URL or in development mode
+  if (!API_URL) return null;
+  
+  try {
+    const res = await fetch(`${API_URL}/currentUser`);
+    if (!res.ok) {
+      return null;
+    }
+    return res.json();
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return null;
   }
-  return res.json();
 };
 
 const getProfileStats = async (): Promise<ProfileStatsPayload> => {
-  const res = await fetch(`${API_URL}/profile`);
-  if (!res.ok) {
-    throw new Error('An error occurred while fetching the data.');
+  // Return empty data if no API URL
+  if (!API_URL) return { best: [], recent: [] };
+  
+  try {
+    const res = await fetch(`${API_URL}/profile`);
+    if (!res.ok) {
+      return { best: [], recent: [] };
+    }
+    return res.json();
+  } catch (error) {
+    console.error("Error fetching profile stats:", error);
+    return { best: [], recent: [] };
   }
-  return res.json();
 };
 
 const useProfile = () => {
@@ -35,9 +51,15 @@ const useProfile = () => {
     data: user,
     isLoading,
     mutate,
-  } = useSWR('getCurrentUser', getCurrentUser);
+  } = useSWR('getCurrentUser', getCurrentUser, {
+    fallbackData: null,
+    revalidateOnFocus: false
+  });
 
-  const { data: profileStats } = useSWR('getProfileStats', getProfileStats);
+  const { data: profileStats } = useSWR('getProfileStats', getProfileStats, {
+    fallbackData: { best: [], recent: [] },
+    revalidateOnFocus: false
+  });
 
   const clearUser = () => mutate(null, false);
 

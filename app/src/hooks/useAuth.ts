@@ -1,28 +1,28 @@
-import { getSession, signOut, useSession } from 'next-auth/react';
-import { signIn } from 'next-auth/react';
 import useSWR from 'swr';
-
 import useProfile from './useProfile';
 
+// Dummy implementation that returns null instead of session
 export const getUser = async () => {
-  const user = await getSession();
-  return user;
+  return null;
 };
 
 const useAuth = () => {
-  const { data } = useSession();
-
   const { clearUser } = useProfile();
 
+  // Always returns null with no validation
   const { isValidating, error } = useSWR('getUser', getUser, {
-    fallbackData: data,
+    fallbackData: null,
   });
 
+  // No-op functions that do nothing
   const logout = () => {
-    signOut({ redirect: false }).then(() => clearUser());
+    clearUser();
+    console.log("Logout clicked (authentication disabled)");
   };
 
-  const login = () => signIn('google');
+  const login = () => {
+    console.log("Login clicked (authentication disabled)");
+  };
 
   return { isValidating, error, logout, login };
 };
