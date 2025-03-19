@@ -1,9 +1,4 @@
 {
-  "version": 2,
-  "buildCommand": "yarn build",
-  "routes": [
-    { "src": "/(.*)", "dest": "/" }
-  ],
   "headers": [
     {
       "source": "/fonts/inter-var-latin.woff2",
