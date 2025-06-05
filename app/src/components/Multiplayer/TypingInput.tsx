@@ -64,7 +64,7 @@ const TypingInput = React.forwardRef<HTMLInputElement, TypingInputProps>(
 
       if (isFinished) {
         progress = 100;
-        !winner && socket.emit('end game', roomId, mode);
+        !winner && socket && socket.emit('end game', roomId, mode);
       }
 
       dispatch({ type: 'SET_STATUS', payload: { wpm, progress } });
@@ -111,7 +111,7 @@ const TypingInput = React.forwardRef<HTMLInputElement, TypingInputProps>(
     }, [currIndex, text.length]);
 
     useEffect(() => {
-      if (id && roomId) {
+      if (id && roomId && socket) {
         socket.off('words generated').on('words generated', (text: string) => {
           console.log('Received words_generated event with text:', text);
           dispatch({ type: 'SET_TEXT', payload: text });

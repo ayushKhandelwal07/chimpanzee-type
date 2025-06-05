@@ -23,7 +23,7 @@ export default function MultiplayerPage() {
   const router = useRouter();
 
   React.useEffect(() => {
-    if (user.id && router?.query?.id) {
+    if (user.id && router?.query?.id && socket) {
       console.log('Joining room:', router?.query?.id);
       socket.emit('join room', { roomId: router?.query?.id, user });
       dispatch({ type: 'SET_ROOM_ID', payload: router?.query?.id as string });

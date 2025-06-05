@@ -59,7 +59,7 @@ export default function Multiplayer() {
     console.log('Is Playing:', isPlaying);
     console.log('Time Before Restart:', timeBeforeRestart);
     
-    if (id && roomId) {
+    if (id && roomId && socket) {
       console.log('Emitting start_game event');
       socket.emit('start game', roomId);
     }
