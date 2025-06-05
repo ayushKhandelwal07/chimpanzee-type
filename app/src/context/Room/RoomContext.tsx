@@ -47,7 +47,9 @@ export default function RoomProvider({
 
     socket.on('connect', () => {
       console.log('Socket connected with ID:', socket.id);
-      dispatch({ type: 'SET_USER_ID', payload: socket.id });    
+      if (socket.id) {
+        dispatch({ type: 'SET_USER_ID', payload: socket.id });    
+      }
       dispatch({ type: 'SET_SOCKET', payload: socket });
     });
 
