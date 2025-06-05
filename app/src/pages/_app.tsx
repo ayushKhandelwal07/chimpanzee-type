@@ -21,7 +21,7 @@ import RoomProvider from '@/context/Room/RoomContext';
 
 function MyApp({
   Component,
-  pageProps: { session, ...pageProps },
+  pageProps,
   router,
 }: AppProps) {
   return (
