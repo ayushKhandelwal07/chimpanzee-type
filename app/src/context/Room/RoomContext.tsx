@@ -1,109 +1,105 @@
-import { useRouter } from 'next/router';
 import * as React from 'react';
-import { io } from 'socket.io-client';
-import { animals, uniqueNamesGenerator } from 'unique-names-generator';
-
-import useProfile from '@/hooks/useProfile';
+import { io, Socket } from 'socket.io-client';
 
 import reducer from './reducer';
-import { RoomContextValues } from './types';
+import { RoomContextValues, RoomState } from './types';
 
-const socket = io(
-  process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8080',
-  {
-    autoConnect: false,
-  }
-);
-
-const RoomContext = React.createContext({} as RoomContextValues);
-
-export const RoomProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useProfile();
-
-  const [room, dispatch] = React.useReducer(reducer, {
-    text: '',
-    mode: 'words',
-    isPlaying: false,
-    isFinished: false,
-    isChatOpen: false,
-    winner: null,
-    user: {
-      isOwner: false,
-      roomId: null,
-      username:
-        localStorage?.getItem('nickname') ||
-        user?.name ||
-        uniqueNamesGenerator({
-          dictionaries: [animals],
-          style: 'lowerCase',
-        }),
-      id: '',
-      status: {
-        wpm: 0,
-        progress: 0,
-      },
-      isReady: false,
+const initialState: RoomState = {
+  user: {
+    username: '',
+    isOwner: false,
+    roomId: null,
+    id: '',
+    status: {
+      wpm: 0,
+      progress: 0,
     },
-    players: [],
-    socket,
-  });
-
-  const [timeBeforeRestart, setTimeBeforeRestart] = React.useState(() => 0);
-
-  const resetTime = async (time: number) => setTimeBeforeRestart(time);
-
-  React.useEffect(() => {
-    const dispatchTimeout = setTimeout(() => {
-      room.user.isReady && dispatch({ type: 'SET_IS_PLAYING', payload: true });
-    }, 5000);
-
-    const restartInterval = setInterval(() => {
-      if (room.user.isReady) {
-        setTimeBeforeRestart((previousTime) => {
-          if (previousTime === 0) {
-            clearInterval(restartInterval);
-          }
-          return previousTime - 1;
-        });
-      }
-    }, 1000);
-
-    return () => {
-      clearInterval(restartInterval);
-      clearTimeout(dispatchTimeout);
-    };
-  }, [room.user.isReady]);
-
-  const { pathname } = useRouter();
-
-  socket.on('connect', () => {
-    dispatch({ type: 'SET_USER_ID', payload: socket.id });
-  });
-
-  socket.on('disconnect', () => {
-    dispatch({ type: 'SET_IS_READY', payload: false });
-    dispatch({ type: 'SET_ROOM_ID', payload: null });
-  });
-
-  React.useEffect(() => {
-    if (room.user.id && room.user.roomId) {
-      socket.emit('room update', room.user);
-    }
-
-    if (pathname === '/multiplayer' && room.user.roomId && room.user.id) {
-      socket.emit('leave room', room.user);
-    }
-
-    socket.connect();
-  }, [pathname, room.user]);
-
-  return (
-    <RoomContext.Provider
-      value={{ room, dispatch, timeBeforeRestart, resetTime }}
-    >
-      {children}
-    </RoomContext.Provider>
-  );
+    isReady: false,
+  },
+  mode: 'words',
+  isFinished: false,
+  isPlaying: false,
+  isChatOpen: false,
+  text: '',
+  players: [],
+  socket: null as unknown as Socket,
+  winner: null,
 };
 
-export const useRoomContext = () => React.useContext(RoomContext);
+const RoomContext = React.createContext<RoomContextValues | undefined>(undefined);
+
+export default function RoomProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [room, dispatch] = React.useReducer(reducer, initialState);
+  const [timeBeforeRestart, setTimeBeforeRestart] = React.useState(0);
+
+  React.useEffect(() => {
+    console.log('Initializing socket connection...');
+    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8080', {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket connected with ID:', socket.id);
+      dispatch({ type: 'SET_USER_ID', payload: socket.id });    
+      dispatch({ type: 'SET_SOCKET', payload: socket });
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+    });
+
+    return () => {
+      console.log('Cleaning up socket connection...');
+      socket.close();
+    };
+  }, []);
+
+  const resetTime = React.useCallback(
+    (time: number) =>
+      new Promise<void>((resolve) => {
+        setTimeBeforeRestart(time);
+        const interval = setInterval(() => {
+          setTimeBeforeRestart((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              resolve();
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }),
+    []
+  );
+
+  const value = React.useMemo(
+    () => ({
+      room,
+      dispatch,
+      timeBeforeRestart,
+      resetTime,
+    }),
+    [room, dispatch, timeBeforeRestart, resetTime]
+  );
+
+  return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;
+}
+
+export function useRoomContext() {
+  const context = React.useContext(RoomContext);
+  if (context === undefined) {
+    throw new Error('useRoomContext must be used within a RoomProvider');
+  }
+  return context;
+}

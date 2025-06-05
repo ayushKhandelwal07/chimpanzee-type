@@ -3,9 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import * as React from 'react';
 import {
-  FaInfo,
   FaKeyboard,
-  FaTerminal,
 } from 'react-icons/fa';
 import { RiTeamFill } from 'react-icons/ri';
 import { TbKeyboard } from 'react-icons/tb';
@@ -58,7 +56,6 @@ export default function Header() {
 
         <nav className='flex w-full flex-1 items-center justify-between sm:w-auto'>
           <div className='flex space-x-6'>
-
             <div className='relative'>
               <div className='peer'>
                 <Link href='/solo'>
@@ -94,27 +91,6 @@ export default function Header() {
                 multiplayer
               </Tooltip>
             </div>
-            
-            <div className='relative'>
-              <div className='peer'>
-                <Link href='/about'>
-                  <a>
-                    <FaInfo
-                      className={clsx(
-                        'cursor-pointer fill-hl/50 text-lg transition-colors duration-200 hover:fill-hl',
-                        { 'fill-hl': pathname === '/about' }
-                      )}
-                    />
-                  </a>
-                </Link>
-              </div>
-              <Tooltip className='cursor-default peer-hover:translate-y-0 peer-hover:opacity-100'>
-                about
-              </Tooltip>
-            </div>
-
-
-
           </div>
           <div className='hidden flex-col -space-y-1 sm:space-y-1 ns:flex'>
             <div className='flex cursor-pointer list-none space-x-1.5 text-[10px] font-semibold sm:text-xs'>
@@ -143,12 +119,6 @@ export default function Header() {
                 </div>
               ))}
             </div>
-          </div>
-          <div
-            className='rounded-full bg-hl p-2 ns:hidden'
-            onClick={() => dispatch({ type: 'TOGGLE_COMMAND_PALETTE' })}
-          >
-            <FaTerminal className='cursor-pointer fill-bg/90 text-lg' />
           </div>
         </nav>
       </div>

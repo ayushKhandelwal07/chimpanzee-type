@@ -36,6 +36,11 @@ const reducer = (state: RoomState, action: Action): RoomState => {
           id: action.payload,
         },
       };
+    case 'SET_SOCKET':
+      return {
+        ...state,
+        socket: action.payload,
+      };
     case 'SET_NICKNAME':
       localStorage.setItem('nickname', action.payload);
       return {

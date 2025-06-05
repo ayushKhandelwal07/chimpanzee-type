@@ -4,9 +4,6 @@ import { BsCursorFill } from 'react-icons/bs';
 import { BsFlagFill } from 'react-icons/bs';
 import useTyping from 'react-typing-game-hook';
 
-import useLeaderboard from '@/hooks/useLeaderboard';
-import useProfile from '@/hooks/useProfile';
-
 import Tooltip from '@/components/Tooltip';
 
 import { usePreferenceContext } from '@/context/Preference/PreferenceContext';
@@ -23,10 +20,6 @@ const TypingInput = React.forwardRef<HTMLInputElement, TypingInputProps>(
     const letterElements = useRef<HTMLDivElement>(null);
     const [timeLeft, setTimeLeft] = useState(() => parseInt(time));
 
-    const { user } = useProfile();
-
-    const { createLeaderboardData } = useLeaderboard();
-
     const {
       preferences: { isOpen, zenMode, type },
     } = usePreferenceContext();
@@ -42,7 +35,7 @@ const TypingInput = React.forwardRef<HTMLInputElement, TypingInputProps>(
         endTime,
       },
       actions: { insertTyping, deleteTyping, resetTyping, endTyping },
-    } = useTyping(text, { skipCurrentWordOnSpace: false });
+    } = useTyping(text, { skipCurrentWordOnSpace: true });
 
     const [margin, setMargin] = useState(() => 0);
     const [value, setValue] = useState(() => '');
@@ -71,6 +64,7 @@ const TypingInput = React.forwardRef<HTMLInputElement, TypingInputProps>(
       }
     }, [currIndex]);
 
+    //time management code
     useEffect(() => {
       setValue('');
       setMargin(0);
@@ -106,14 +100,6 @@ const TypingInput = React.forwardRef<HTMLInputElement, TypingInputProps>(
       if (phase === 2 && endTime && startTime) {
         const dur = Math.floor((endTime - startTime) / 1000);
         setDuration(dur);
-
-        // todo: create leaderboard
-        createLeaderboardData({
-          name: user?.name || localStorage?.getItem('nickname') || 'guest',
-          wpm: Math.round(((60 / dur) * correctChar) / 5),
-          time: parseInt(time),
-          type: type || 'words',
-        });
       } else {
         setDuration(0);
       }

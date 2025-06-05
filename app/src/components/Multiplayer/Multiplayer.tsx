@@ -51,6 +51,20 @@ export default function Multiplayer() {
   const inputRef = React.useRef() as React.MutableRefObject<HTMLInputElement>;
   const buttonRef = React.useRef() as React.MutableRefObject<HTMLButtonElement>;
 
+  const handleStartGame = () => {
+    console.log('Start button clicked');
+    console.log('Room ID:', roomId);
+    console.log('User ID:', id);
+    console.log('Is Owner:', isOwner);
+    console.log('Is Playing:', isPlaying);
+    console.log('Time Before Restart:', timeBeforeRestart);
+    
+    if (id && roomId) {
+      console.log('Emitting start_game event');
+      socket.emit('start game', roomId);
+    }
+  };
+
   return (
     <>
       {/* Multiplayer */}
@@ -61,7 +75,7 @@ export default function Multiplayer() {
           ref={buttonRef}
           disabled={isPlaying || !isOwner || timeBeforeRestart > 0}
           tabIndex={2}
-          onClick={() => id && roomId && socket.emit('start game', roomId)}
+          onClick={handleStartGame}
           className={clsx(
             'outline-solid mb-8 transform rounded-lg px-3 py-2 font-primary text-bg shadow-b shadow-fg/50 outline-offset-[6px] transition-all duration-200 focus:outline-dashed focus:outline-[3px] active:translate-y-[4px] active:shadow-none',
             [

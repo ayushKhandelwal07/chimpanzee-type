@@ -20,7 +20,7 @@ export type RoomState = {
   isChatOpen: boolean;
   text: string;
   players: Player[];
-  socket: Socket;
+  socket: Socket | null;
   winner: string | null;
 };
 
@@ -37,6 +37,7 @@ export type Action =
   | { type: 'SET_TEXT'; payload: string }
   | { type: 'SET_IS_OWNER'; payload: boolean }
   | { type: 'SET_USER_ID'; payload: string }
+  | { type: 'SET_SOCKET'; payload: Socket }
   | {
       type: 'SET_STATUS';
       payload: {

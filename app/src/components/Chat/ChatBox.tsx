@@ -5,7 +5,6 @@ import * as React from 'react';
 import { GiDiscussion } from 'react-icons/gi';
 
 import { useChatContext } from '@/context/Chat/ChatContext';
-import { Chat } from '@/context/Chat/types';
 import { useRoomContext } from '@/context/Room/RoomContext';
 
 import Bubble from './Bubble';
@@ -21,63 +20,66 @@ export default function ChatBox({
   isRoomChat?: boolean;
 }) {
   const {
-    room: {
-      isChatOpen,
-      user: { id },
-      socket,
-    },
-    dispatch,
-  } = useRoomContext();
-
-  const {
-    chat: { roomChat, publicChat, onlineUsers, showNotification },
-    dispatch: chatDispatch,
-  } = useChatContext();
-
-  const { pathname } = useRouter();
-
+    room: { socket, user: { roomId } }} = useRoomContext();
+  const { chat, dispatch } = useChatContext();
+  const [isChatOpen, setIsChatOpen] = React.useState(false);
   const [isPublic, setIsPublic] = React.useState(false);
 
+  const { pathname } = useRouter();
   const divRef = React.useRef() as React.MutableRefObject<HTMLDivElement>;
 
   React.useEffect(() => {
-    isChatOpen &&
-      chatDispatch({ type: 'SET_SHOW_NOTIFICATION', payload: false });
-    socket
-      .off('receive chat')
-      .on('receive chat', ({ id, username, value, type, roomId }: Chat) => {
-        if (roomId === 'public') {
-          chatDispatch({
-            type: 'ADD_PUBLIC_CHAT',
-            payload: { id, username, value, type, roomId },
-          });
+    if (socket) {
+      socket.on('receive chat', (message) => {
+        console.log('Received chat message:', message);
+        
+        // Add message to appropriate chat list
+        if (message.roomId === 'public' || !message.roomId) {
+          dispatch({ type: 'ADD_PUBLIC_CHAT', payload: message });
         } else {
-          chatDispatch({
-            type: 'ADD_ROOM_CHAT',
-            payload: { id, username, value, type, roomId },
-          });
+          dispatch({ type: 'ADD_ROOM_CHAT', payload: message });
         }
-        if (!isChatOpen)
-          chatDispatch({ type: 'SET_SHOW_NOTIFICATION', payload: true });
+
+        // Show notification if chat is closed
+        if (!isChatOpen) {
+          dispatch({ type: 'SET_SHOW_NOTIFICATION', payload: true });
+        }
       });
-  }, [chatDispatch, isChatOpen, socket]);
+
+      socket.on('online users', (users: number) => {
+        dispatch({ type: 'SET_ONLINE_USERS', payload: users });
+      });
+
+      return () => {
+        socket.off('receive chat');
+        socket.off('online users');
+      };
+    }
+  }, [socket, isChatOpen, dispatch]);
 
   React.useEffect(() => {
     if (divRef.current && isChatOpen) {
       divRef.current.scrollTop = divRef.current.scrollHeight;
     }
-  }, [roomChat, publicChat, isChatOpen, isPublic]);
+  }, [chat.publicChat, chat.roomChat, isChatOpen]);
+
+  const displayMessages = isRoomChat 
+    ? (isPublic ? chat.publicChat : chat.roomChat)
+    : chat.publicChat;
 
   return (
     <span className='z-1 absolute flex w-full cursor-pointer items-center justify-end text-3xl font-bold text-bg'>
       <button
-        onClick={() => dispatch({ type: 'TOGGLE_CHAT' })}
+        onClick={() => {
+          setIsChatOpen(!isChatOpen);
+          dispatch({ type: 'SET_SHOW_NOTIFICATION', payload: false });
+        }}
         className='active:text-fg/-80 flex flex-col items-center gap-1 text-3xl text-fg transition-colors duration-200 hover:text-fg/90'
       >
         <GiDiscussion />
         <span className='mr-2 text-sm'>{label}</span>
       </button>
-      {showNotification && (
+      {chat.showNotification && (
         <div
           className={`absolute -right-2 -top-2 h-4 w-4 animate-bounce rounded-full bg-fg text-xs text-bg ${
             ['/multiplayer', '/'].includes(pathname) && 'right-2'
@@ -87,7 +89,7 @@ export default function ChatBox({
         </div>
       )}
       <div
-        onClick={() => isChatOpen && dispatch({ type: 'TOGGLE_CHAT' })}
+        onClick={() => isChatOpen && setIsChatOpen(false)}
         className={`fixed inset-0 flex cursor-default gap-4 rounded-lg bg-bg/90 opacity-0 transition-all duration-300 ${
           isChatOpen ? 'z-30 opacity-100' : 'pointer-events-none -z-10'
         } ${className}`}
@@ -106,7 +108,7 @@ export default function ChatBox({
                 <div className='mb-2 flex gap-2 text-sm'>
                   {isRoomChat && (
                     <button
-                      onClick={() => setIsPublic((isPublic) => !isPublic)}
+                      onClick={() => setIsPublic(false)}
                       className={clsx(
                         'rounded-lg px-2 py-1 transition-colors duration-200',
                         [!isPublic ? 'bg-fg text-bg' : 'text-hl']
@@ -116,7 +118,7 @@ export default function ChatBox({
                     </button>
                   )}
                   <button
-                    onClick={() => setIsPublic((isPublic) => !isPublic)}
+                    onClick={() => setIsPublic(true)}
                     className={clsx(
                       'rounded-lg px-2 py-1 transition-colors duration-200',
                       [isPublic || !isRoomChat ? 'bg-fg text-bg' : 'text-hl']
@@ -126,56 +128,23 @@ export default function ChatBox({
                   </button>
                 </div>
                 <span className='pr-4 text-sm text-fg xs:pr-6'>
-                  {onlineUsers} online
+                  {chat.onlineUsers} online
                 </span>
               </div>
               <div
                 ref={divRef}
                 className='xs:scrollbar mx-auto flex h-full w-full flex-col overflow-y-auto break-words py-2 pr-4 xs:pr-2'
               >
-                {(isPublic || ['/multiplayer', '/'].includes(pathname)) &&
-                  publicChat.map((chat, index) =>
-                    chat.id === id ? (
-                      <Bubble
-                        type={chat.type}
-                        key={index}
-                        isYou
-                        value={chat.value}
-                      />
-                    ) : (
-                      <Bubble
-                        type={chat.type}
-                        key={index}
-                        username={chat.username}
-                        value={chat.value}
-                      />
-                    )
-                  )}
-                {!isPublic &&
-                  isRoomChat &&
-                  roomChat.map((chat, index) =>
-                    chat.id === id ? (
-                      <Bubble
-                        type={chat.type}
-                        key={index}
-                        isYou
-                        value={chat.value}
-                      />
-                    ) : (
-                      <Bubble
-                        type={chat.type}
-                        key={index}
-                        username={chat.username}
-                        value={chat.value}
-                      />
-                    )
-                  )}
+                {displayMessages.map((chat, index) => (
+                  <Bubble
+                    key={index}
+                    username={chat.username}
+                    value={chat.value}
+                    type={chat.type}
+                  />
+                ))}
               </div>
-              <ChatInput
-                isPublic={
-                  ['/multiplayer', '/'].includes(pathname) ? true : isPublic
-                }
-              />
+              <ChatInput isPublic={isPublic} roomId={roomId} />
             </div>
           </motion.div>
         )}

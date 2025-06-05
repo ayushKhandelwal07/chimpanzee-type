@@ -30,18 +30,17 @@ export const updateRoomHandler = (socket: Socket) => {
 	socket.on("room update", (user: Player) => {
 		const { roomId } = user;
 		if (!rooms[roomId]) return;
+		
+		// Update the player's status in the room
 		const players = rooms[roomId].players;
-		rooms[roomId].players = players.map((player) => (player.id !== user.id ? player : user));
-		io.in(roomId).emit("room update", rooms[roomId].players);
-
-		// start game
-		// const allPlayersReady = rooms[roomId].players.every((player) => player.isReady);
-		// if (allPlayersReady) {
-		// 	io.in(roomId).emit("start game");
-		// 	rooms[roomId].inGame = true;
-		// } else {
-		// 	rooms[roomId].inGame = false;
-		// }
+		const updatedPlayers = players.map((player) => 
+			player.id === user.id ? { ...player, status: user.status } : player
+		);
+		
+		rooms[roomId].players = updatedPlayers;
+		
+		// Broadcast the updated player list to all players in the room
+		io.in(roomId).emit("room update", updatedPlayers);
 	});
 };
 

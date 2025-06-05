@@ -20,9 +20,24 @@ const endGameHander = (socket) => {
 exports.endGameHander = endGameHander;
 const startGameHander = (socket) => {
     socket.on("start game", (roomId) => {
-        __1.io.in(roomId).emit("words generated", __1.rooms[roomId].toType);
-        __1.io.in(roomId).emit("start game");
-        __1.rooms[roomId].inGame = true;
+        console.log("Received start game event for room:", roomId);
+        if (!__1.rooms[roomId]) {
+            console.log("Room not found:", roomId);
+            return;
+        }
+        // Always generate new text for each game start
+        const toType = (0, functions_1.shuffleList)("words").join(" ");
+        __1.rooms[roomId].toType = toType;
+        console.log("Generated new text:", toType);
+        // First emit the text to be typed
+        __1.io.in(roomId).emit("words generated", toType);
+        console.log("Emitted words_generated event");
+        // Then start the game after a short delay to ensure text is loaded
+        setTimeout(() => {
+            __1.rooms[roomId].inGame = true;
+            __1.io.in(roomId).emit("start game");
+            console.log("Emitted start_game event");
+        }, 500); // Increased delay to ensure text is loaded
     });
 };
 exports.startGameHander = startGameHander;

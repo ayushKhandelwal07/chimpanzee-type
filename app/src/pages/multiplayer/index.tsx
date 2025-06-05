@@ -26,6 +26,8 @@ const schema = yup.object().shape({
     .length(6, 'code must be 6 characters long'),
 });
 
+const ROOM_CREATION_TIMEOUT = 5000; // 5 seconds timeout
+
 export default function MultiplayerPage() {
   const methods = useForm<{ code: string }>({
     mode: 'onTouched',
@@ -45,6 +47,8 @@ export default function MultiplayerPage() {
   const [isJoiningRoom, setIsJoiningRoom] = React.useState(false);
 
   React.useEffect(() => {
+    if (!socket) return;
+
     socket.emit('hi', 'hello');
 
     // create another room id if already exist
@@ -75,8 +79,33 @@ export default function MultiplayerPage() {
         router.push(`/multiplayer/${roomId}`);
       });
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => {
+      socket.off('room already exist');
+      socket.off('end game');
+      socket.off('create room success');
+    };
+  }, [socket, mode, dispatch, resetTime, router]);
+
+  const handleCreateRoom = React.useCallback(() => {
+    if (!socket) return;
+    
+    setIsCreatingRoom(true);
+    createRoom(socket, mode);
+
+    // Set a timeout to handle room creation failure
+    const timeoutId = setTimeout(() => {
+      if (isCreatingRoom) {
+        setIsCreatingRoom(false);
+        toast.error('Failed to create room. Please try again.', {
+          position: toast.POSITION.TOP_CENTER,
+          toastId: 'create-room-error',
+          autoClose: 3000,
+        });
+      }
+    }, ROOM_CREATION_TIMEOUT);
+
+    return () => clearTimeout(timeoutId);
+  }, [socket, mode, isCreatingRoom]);
 
   const onSubmit = ({ code }: { code: string }) => {
     setIsJoiningRoom(true);
@@ -85,99 +114,62 @@ export default function MultiplayerPage() {
 
   return (
     <AnimateFade>
-      <Seo title='Enter Room Code' />
+      <Seo title='Multiplayer' />
 
       <main>
         <section>
-          <div className='layout flex min-h-[65vh] w-full flex-col items-center pt-10 text-center font-primary'>
-            <div className='relative mb-8 flex h-8 w-full max-w-[800px] items-center justify-between'>
+          <div className='layout flex min-h-[80vh] flex-col items-center justify-center gap-8 pt-8'>
+            <div className='relative flex h-8 w-full max-w-[800px] items-center justify-between'>
               <ChatBox
-                className='right-3 w-[calc(100%+0.5rem)] sm:right-2'
+                className='right-3 w-[calc(100%+2rem)] sm:right-2'
                 label='public chat'
               />
             </div>
-            <div className='flex w-full flex-col gap-4'>
-              <RiTeamFill className='self-center text-[5rem] text-fg' />
-              <h1 className='mb-2'>multiplayer mode</h1>
+
+            <div className='flex w-full max-w-[800px] flex-col items-center gap-8'>
               <FormProvider {...methods}>
-                <form onSubmit={handleSubmit(onSubmit)}>
-                  <div className='mx-auto -mb-2 flex max-w-[330px] justify-center gap-2'>
-                    <Input
-                      name='code'
-                      id='code'
-                      autoComplete='off'
-                      placeholder='enter room code'
-                      className='flex-1 rounded-r-none'
-                    />
-                    <Button
-                      disabled={isJoiningRoom}
-                      type='submit'
-                      className={`grid h-[42px] w-12 place-items-center rounded-l-none ${
-                        isJoiningRoom && 'cursor-not-allowed'
-                      }`}
-                    >
-                      <FaArrowRight className='text-bg' />
-                    </Button>
-                  </div>
+                <form
+                  onSubmit={handleSubmit(onSubmit)}
+                  className='flex w-full flex-col items-center gap-4'
+                >
+                  <Input
+                    placeholder='enter room code'
+                    autoComplete='off'
+                    name='code'
+                    id='code'
+                    maxLength={6}
+                    className='text-center'
+                  />
+                  <Button
+                    type='submit'
+                    className='flex items-center'
+                    disabled={isJoiningRoom}
+                  >
+                    {isJoiningRoom ? (
+                      <CgSpinner className='animate-spin' />
+                    ) : (
+                      <>
+                        <RiTeamFill className='mr-1' />
+                        Join Room
+                      </>
+                    )}
+                  </Button>
                 </form>
               </FormProvider>
 
-              <span className='mb-4 text-3xl font-bold'>or</span>
-              <div className='mx-auto mb-4 flex space-x-2 font-primary'>
-                <button
-                  onClick={() =>
-                    dispatch({ type: 'SET_MODE', payload: 'words' })
-                  }
-                  className={clsx(
-                    'rounded-lg px-2 py-1 transition-colors duration-200',
-                    [mode === 'words' ? 'text-hl ring-2 ring-fg' : 'text-hl']
-                  )}
-                >
-                  words
-                </button>
-                <button
-                  onClick={() =>
-                    dispatch({ type: 'SET_MODE', payload: 'sentences' })
-                  }
-                  className={clsx(
-                    'rounded-lg px-2 py-1 transition-colors duration-200',
-                    [
-                      mode === 'sentences'
-                        ? 'text-hl ring-2 ring-fg'
-                        : 'text-hl',
-                    ]
-                  )}
-                >
-                  sentences
-                </button>
-                <button
-                  onClick={() =>
-                    dispatch({ type: 'SET_MODE', payload: 'numbers' })
-                  }
-                  className={clsx(
-                    'rounded-lg px-2 py-1 transition-colors duration-200',
-                    [mode === 'numbers' ? 'text-hl ring-2 ring-fg' : 'text-hl']
-                  )}
-                >
-                  numbers
-                </button>
-              </div>
-              <div className='flex items-center justify-center space-x-4'>
+              <div className='flex items-center gap-4'>
                 <Button
-                  onClick={() => {
-                    setIsCreatingRoom(true);
-                    createRoom(socket, mode);
-                  }}
+                  onClick={handleCreateRoom}
+                  className='flex items-center'
                   disabled={isCreatingRoom}
-                  className={`${isCreatingRoom && 'cursor-not-allowed'} mb-0`}
                 >
                   {isCreatingRoom ? (
-                    <span className='flex items-center text-bg'>
-                      Creating room
-                      <CgSpinner className='ml-2 animate-spin' />
-                    </span>
+                    <CgSpinner className='animate-spin' />
                   ) : (
-                    'Create New Room'
+                    <>
+                      <FaArrowRight className='mr-1' />
+                      Create Room
+                    </>
                   )}
                 </Button>
               </div>

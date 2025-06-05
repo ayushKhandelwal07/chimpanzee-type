@@ -1,43 +1,34 @@
 import * as React from 'react';
-
-import useProfile from '@/hooks/useProfile';
-
 import reducer from './reducer';
-import { ChatContextValues } from './types';
-import { useRoomContext } from '../Room/RoomContext';
+import { ChatState, ChatContextValues, Action } from './types';
 
-const ChatContext = React.createContext({} as ChatContextValues);
-
-export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
-  const [chat, dispatch] = React.useReducer(reducer, {
-    publicChat: [],
-    roomChat: [],
-    onlineUsers: 0,
-    showNotification: false,
-  });
-
-  const {
-    room: { socket },
-  } = useRoomContext();
-
-  const { user } = useProfile();
-
-  React.useEffect(() => {
-    if (socket) {
-      socket.emit('get online users');
-      socket
-        .off('online users')
-        .on('online users', (users: number) =>
-          dispatch({ type: 'SET_ONLINE_USERS', payload: users })
-        );
-    }
-  }, [socket, user]);
-
-  return (
-    <ChatContext.Provider value={{ chat, dispatch }}>
-      {children}
-    </ChatContext.Provider>
-  );
+const initialState: ChatState = {
+  publicChat: [],
+  roomChat: [],
+  onlineUsers: 0,
+  showNotification: false,
 };
 
-export const useChatContext = () => React.useContext(ChatContext);
+const ChatContext = React.createContext<ChatContextValues | undefined>(undefined);
+
+export function ChatProvider({ children }: { children: React.ReactNode }) {
+  const [chat, dispatch] = React.useReducer(reducer, initialState);
+
+  const value = React.useMemo(
+    () => ({
+      chat,
+      dispatch,
+    }),
+    [chat]
+  );
+
+  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
+}
+
+export function useChatContext() {
+  const context = React.useContext(ChatContext);
+  if (context === undefined) {
+    throw new Error('useChatContext must be used within a ChatProvider');
+  }
+  return context;
+}

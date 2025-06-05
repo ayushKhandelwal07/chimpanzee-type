@@ -1,36 +1,44 @@
-import * as React from 'react';
+import clsx from 'clsx';
+import { motion } from 'framer-motion';
 
-type BubbleProps = {
+interface BubbleProps {
   username?: string;
   value: string;
   isYou?: boolean;
-  type: 'notification' | 'message';
-};
+}
 
-const Bubble: React.FC<BubbleProps> = ({ username, value, isYou, type }) =>
-  type === 'message' ? (
-    isYou ? (
-      <span className='text-normal mt-2 max-w-[70%] self-end rounded-lg bg-hl px-2 py-1 text-left text-sm text-fg'>
-        <span className='text-bg'>{value}</span>
-      </span>
-    ) : (
-      <span className='text-normal mt-1 w-full text-left text-sm text-fg'>
-        <span>{username}: </span>
-        {value}
-      </span>
-    )
-  ) : (
-    <span className='text-normal mt-2 w-full text-center text-sm'>
-      {isYou ? (
-        <span className={`${value === 'joined' ? 'text-hl' : 'text-fg'}`}>
-          You {value} the room.
-        </span>
-      ) : (
-        <span className={`${value === 'joined' ? 'text-hl' : 'text-fg'}`}>
-          {username} {value} the room.
+export default function Bubble({ username, value, isYou }: BubbleProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={clsx('flex w-full flex-col gap-1', [
+        isYou ? 'items-end' : 'items-start',
+      ])}
+    >
+      {username && (
+        <span
+          className={clsx('text-xs font-medium', [
+            isYou ? 'text-fg/80' : 'text-hl',
+          ])}
+        >
+          {username}
         </span>
       )}
-    </span>
-  );
 
-export default Bubble;
+      {/* for message from me or the other for styling of the mesage  */}
+      <div
+        className={clsx(
+          'max-w-[80%] break-words rounded-lg px-3 py-2 text-sm',
+          [
+            isYou
+              ? 'bg-fg text-bg'
+              : 'bg-bg/30 text-fg ring-1 ring-fg/60 ring-offset-1 ring-offset-bg',
+          ]
+        )}
+      >
+        {value}
+      </div>
+    </motion.div>
+  );
+}

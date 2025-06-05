@@ -9,15 +9,18 @@ import { endGameHander, startGameHander } from "./lib/gameHandler";
 
 const port = process.env.PORT || 8080;
 const app = express();
-app.use(cors);
+app.use(cors());
 
 const server = http.createServer(app);
 export const io = new Server(server, {
 	cors: {
 		origin: [
 			"http://localhost:3000",
+			"https://chimpanzee-type-neon.vercel.app",
+			"http://YOUR_EC2_PUBLIC_IP:8080", // Replace with your actual EC2 public IP
 		],
 		methods: ["GET", "POST"],
+		credentials: true
 	},
 });
 
@@ -27,10 +30,8 @@ export const playerRooms: PlayerState = {};
 export const rooms: RoomState = {};
 
 io.on("connection", (socket) => {
-	// console.log(io.sockets.adapter.rooms);
-	// console.log(sockets);
-	// console.log(socket.rooms);
-	// console.log("connected");
+	console.log("New client connected:", socket.id);
+	
 	socket.join("public");
 	const sockets = Array.from(io.sockets.sockets).map((socket) => socket[0]);
 	io.to("public").emit("online users", sockets.length);
@@ -42,9 +43,35 @@ io.on("connection", (socket) => {
 	});
 
 	// chat handlers
-	socket.on("send chat", ({ username, value, roomId, id }: SendChat) => {
-		console.log(roomId);
-		io.to(roomId).emit("receive chat", { username, value, id, type: "message", roomId });
+	socket.on("send chat", (message: SendChat) => {
+		try {
+			console.log('Received chat message:', message);
+			
+			if (!message.username || !message.value) {
+				console.error('Invalid message format:', message);
+				return;
+			}
+
+			const chatMessage = {
+				username: message.username,
+				value: message.value,
+				id: message.id || socket.id,
+				type: 'message',
+				roomId: message.roomId || 'public'
+			};
+
+			// Send to everyone in the room including sender
+			if (chatMessage.roomId === 'public') {
+				console.log('Broadcasting to public chat:', chatMessage);
+				io.to('public').emit('receive chat', chatMessage);
+			} else {
+				console.log('Broadcasting to room:', chatMessage.roomId, chatMessage);
+				io.to(chatMessage.roomId).emit('receive chat', chatMessage);
+			}
+		} catch (error) {
+			console.error('Error handling chat message:', error);
+			socket.emit('chat error', { message: 'Failed to send message' });
+		}
 	});
 
 	// handle user disconnect

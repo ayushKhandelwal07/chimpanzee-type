@@ -31,17 +31,12 @@ const updateRoomHandler = (socket) => {
         const { roomId } = user;
         if (!__1.rooms[roomId])
             return;
+        // Update the player's status in the room
         const players = __1.rooms[roomId].players;
-        __1.rooms[roomId].players = players.map((player) => (player.id !== user.id ? player : user));
-        __1.io.in(roomId).emit("room update", __1.rooms[roomId].players);
-        // start game
-        // const allPlayersReady = rooms[roomId].players.every((player) => player.isReady);
-        // if (allPlayersReady) {
-        // 	io.in(roomId).emit("start game");
-        // 	rooms[roomId].inGame = true;
-        // } else {
-        // 	rooms[roomId].inGame = false;
-        // }
+        const updatedPlayers = players.map((player) => player.id === user.id ? Object.assign(Object.assign({}, player), { status: user.status }) : player);
+        __1.rooms[roomId].players = updatedPlayers;
+        // Broadcast the updated player list to all players in the room
+        __1.io.in(roomId).emit("room update", updatedPlayers);
     });
 };
 exports.updateRoomHandler = updateRoomHandler;

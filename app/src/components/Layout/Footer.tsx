@@ -8,7 +8,7 @@ export default function Footer() {
   return (
     <footer
       className={clsx(
-        'layout flex h-full justify-self-end bg-transparent pt-12 pb-8'
+        'layout flex h-full justify-self-end inset-x-0 bottom-0 bg-transparent pt-12 pb-8'
       )}
     >
       <div className='flex w-full items-center justify-between font-primary'>

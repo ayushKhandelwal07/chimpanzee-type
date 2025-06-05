@@ -1,47 +1,93 @@
+import { useRouter } from 'next/router';
 import * as React from 'react';
-import { IoMdSend } from 'react-icons/io';
+import { useForm } from 'react-hook-form';
 
+import { useChatContext } from '@/context/Chat/ChatContext';
 import { useRoomContext } from '@/context/Room/RoomContext';
 
-const ChatInput = ({ isPublic }: { isPublic: boolean }) => {
-  const {
-    room: {
-      socket,
-      user: { username, roomId, id },
-    },
-  } = useRoomContext();
+interface ChatForm {
+  chat: string;
+}
+
+export default function ChatInput({ isPublic, roomId }: { isPublic: boolean; roomId: string | null }) {
+  const { room } = useRoomContext();
+  const { dispatch } = useChatContext();
+  const [error, setError] = React.useState<string | null>(null);
+  const { register, handleSubmit, reset } = useForm<ChatForm>();
+
+  React.useEffect(() => {
+    const socket = room.socket;
+    if (!socket) return;
+
+    socket.on('chat error', (data: { message: string }) => {
+      setError(data.message);
+      setTimeout(() => setError(null), 3000);
+    });
+
+    return () => {
+      socket.off('chat error');
+    };
+  }, [room.socket]);
+
+  const onSubmit = handleSubmit(({ chat }) => {
+    setError(null);
+    if (!chat.trim()) return;
+    
+    const socket = room.socket;
+    if (!socket) {
+      setError('Not connected to chat server');
+      return;
+    }
+
+    if (!socket.connected) {
+      setError('Connection lost. Reconnecting...');
+      socket.connect();
+      return;
+    }
+
+    try {
+      const message = {
+        username: room.user.username || 'You',
+        id: socket.id,
+        value: chat.trim(),
+        roomId: isPublic ? 'public' : roomId || 'public',
+        type: 'message' as const,
+      };
+
+      console.log('Sending chat message:', message);
+      socket.emit('send chat', message);
+      
+      // Remove local dispatch since we'll receive the message back from the server
+      reset();
+    } catch (error) {
+      console.error('Error sending chat message:', error);
+      setError('Failed to send message');
+    }
+  });
 
   return (
-    <form
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onSubmit={(e: any) => {
-        e.preventDefault();
-        const { value } = e.target[0];
-        if (!value) return;
-        e.target[0].value = '';
-        if (isPublic) {
-          socket.emit('send chat', { username, value, roomId: 'public', id });
-          return;
-        }
-        socket.emit('send chat', { username, value, roomId, id });
-      }}
-      className='relative mx-auto w-full xs:pr-4'
-    >
-      <input
-        placeholder='type to chat'
-        type='text'
-        className='w-full border-x-0 border-b border-t-0 border-fg bg-transparent font-normal text-fg placeholder:text-fg/50 focus:border-fg focus:outline-0 focus:ring-0'
-      />
-      <button
-        className='absolute right-0 h-full border-b border-fg bg-bg px-2 text-sm font-normal xs:right-4'
-        type='submit'
+    <div className="flex flex-col w-full">
+      {error && (
+        <div className="text-red-500 text-sm mb-2 px-2">{error}</div>
+      )}
+      <form
+        onSubmit={onSubmit}
+        className='mt-2 flex w-full items-center gap-2 rounded-lg bg-bg/30 p-2'
       >
-        <span className='flex items-center text-fg transition-opacity duration-200 hover:text-opacity-80 active:text-opacity-70'>
-          Send <IoMdSend className='ml-1' />
-        </span>
-      </button>
-    </form>
+        <input
+          {...register('chat')}
+          type='text'
+          placeholder='Type a message...'
+          className='w-full rounded-lg bg-bg/30 p-2 text-sm text-fg outline-none ring-1 ring-fg/60 transition-all duration-200 focus:ring-2 focus:ring-fg'
+        />
+        <button
+          type='submit'
+          disabled={!room.socket?.connected}
+          className='rounded-lg bg-fg px-4 py-2 text-sm text-bg transition-colors duration-200 hover:bg-fg/90 disabled:opacity-50 disabled:cursor-not-allowed'
+        >
+          Send
+        </button>
+      </form>
+    </div>
   );
-};
-
-export default ChatInput;
+}

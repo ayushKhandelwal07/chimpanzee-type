@@ -11,7 +11,6 @@ export default function PreferenceProvider({
   children: React.ReactNode;
 }) {
   const [preferences, dispatch] = React.useReducer(reducer, {
-    theme: 'default',
     fontFamily: 'poppins',
     isOpen: false,
     zenMode: false,
@@ -21,12 +20,10 @@ export default function PreferenceProvider({
 
   React.useEffect(() => {
     if (typeof window !== undefined) {
-      const theme = window.localStorage.getItem('theme');
       const fontFamily = window.localStorage.getItem('font-family');
       const type = window.localStorage.getItem('type');
       const time = window.localStorage.getItem('time');
       const zenMode = window.localStorage.getItem('zen-mode');
-      if (theme) dispatch({ type: 'SET_THEME', payload: theme });
       if (fontFamily)
         dispatch({ type: 'SET_FONT_FAMILY', payload: fontFamily });
       if (type) dispatch({ type: 'SET_TYPE', payload: type });

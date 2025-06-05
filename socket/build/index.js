@@ -13,24 +13,23 @@ const disconnectHandler_1 = require("./lib/disconnectHandler");
 const gameHandler_1 = require("./lib/gameHandler");
 const port = process.env.PORT || 8080;
 const app = (0, express_1.default)();
-app.use(cors_1.default);
+app.use((0, cors_1.default)());
 const server = http_1.default.createServer(app);
 exports.io = new socket_io_1.Server(server, {
     cors: {
         origin: [
             "http://localhost:3000",
+            "https://chimpanzee-type-neon.vercel.app",
         ],
         methods: ["GET", "POST"],
+        credentials: true
     },
 });
 exports.playerRooms = {};
 // rooms will consist of key value pair, key being room id, pair being users inside that room and their corresponding data
 exports.rooms = {};
 exports.io.on("connection", (socket) => {
-    // console.log(io.sockets.adapter.rooms);
-    // console.log(sockets);
-    // console.log(socket.rooms);
-    // console.log("connected");
+    console.log("New client connected:", socket.id);
     socket.join("public");
     const sockets = Array.from(exports.io.sockets.sockets).map((socket) => socket[0]);
     exports.io.to("public").emit("online users", sockets.length);
@@ -40,9 +39,34 @@ exports.io.on("connection", (socket) => {
         exports.io.to("public").emit("online users", sockets.length);
     });
     // chat handlers
-    socket.on("send chat", ({ username, value, roomId, id }) => {
-        console.log(roomId);
-        exports.io.to(roomId).emit("receive chat", { username, value, id, type: "message", roomId });
+    socket.on("send chat", (message) => {
+        try {
+            console.log('Received chat message:', message);
+            if (!message.username || !message.value) {
+                console.error('Invalid message format:', message);
+                return;
+            }
+            const chatMessage = {
+                username: message.username,
+                value: message.value,
+                id: message.id || socket.id,
+                type: 'message',
+                roomId: message.roomId || 'public'
+            };
+            // Send to everyone in the room including sender
+            if (chatMessage.roomId === 'public') {
+                console.log('Broadcasting to public chat:', chatMessage);
+                exports.io.to('public').emit('receive chat', chatMessage);
+            }
+            else {
+                console.log('Broadcasting to room:', chatMessage.roomId, chatMessage);
+                exports.io.to(chatMessage.roomId).emit('receive chat', chatMessage);
+            }
+        }
+        catch (error) {
+            console.error('Error handling chat message:', error);
+            socket.emit('chat error', { message: 'Failed to send message' });
+        }
     });
     // handle user disconnect
     (0, disconnectHandler_1.disconnectHandler)(socket);

@@ -39,22 +39,6 @@ const TypingInput = React.forwardRef<HTMLInputElement, TypingInputProps>(
       timeBeforeRestart,
     } = useRoomContext();
 
-    React.useEffect(() => {
-      let progress = Math.floor(((currIndex + 1) / text.length) * 100);
-      const wpm =
-        duration === 0
-          ? Math.ceil(((60 / currentTime) * correctChar) / 5)
-          : Math.ceil(((60 / duration) * correctChar) / 5);
-
-      if (isFinished) {
-        progress = 100;
-        !winner && socket.emit('end game', roomId, mode);
-      }
-
-      dispatch({ type: 'SET_STATUS', payload: { wpm, progress } });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentTime, isFinished]);
-
     const {
       states: {
         charsState,
@@ -70,6 +54,33 @@ const TypingInput = React.forwardRef<HTMLInputElement, TypingInputProps>(
 
     const [margin, setMargin] = useState(() => 0);
     const [value, setValue] = useState(() => '');
+
+    React.useEffect(() => {
+      let progress = Math.floor(((currIndex + 1) / text.length) * 100);
+      const wpm =
+        duration === 0
+          ? Math.ceil(((60 / currentTime) * correctChar) / 5)
+          : Math.ceil(((60 / duration) * correctChar) / 5);
+
+      if (isFinished) {
+        progress = 100;
+        !winner && socket.emit('end game', roomId, mode);
+      }
+
+      dispatch({ type: 'SET_STATUS', payload: { wpm, progress } });
+
+      if (socket && roomId && id) {
+        socket.emit('room update', {
+          id,
+          roomId,
+          username: 'You',
+          isOwner,
+          status: { wpm, progress },
+          isReady: true
+        });
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentTime, isFinished, currIndex, correctChar, duration]);
 
     // set cursor
     const pos = useMemo(() => {
@@ -102,6 +113,7 @@ const TypingInput = React.forwardRef<HTMLInputElement, TypingInputProps>(
     useEffect(() => {
       if (id && roomId) {
         socket.off('words generated').on('words generated', (text: string) => {
+          console.log('Received words_generated event with text:', text);
           dispatch({ type: 'SET_TEXT', payload: text });
           setValue('');
           setMargin(0);
@@ -109,9 +121,29 @@ const TypingInput = React.forwardRef<HTMLInputElement, TypingInputProps>(
           endTyping();
           resetTyping();
         });
+
+        socket.off('start game').on('start game', () => {
+          console.log('Received start_game event');
+          if (ref != null && typeof ref !== 'function') {
+            ref?.current?.focus();
+            setIsFocused(true);
+          }
+          resetTyping();
+          dispatch({ type: 'SET_IS_PLAYING', payload: true });
+        });
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, roomId]);
+
+    // Remove the separate isPlaying effect since we handle it in the socket event
+    useEffect(() => {
+      if (!isPlaying) {
+        setIsFocused(false);
+        if (ref != null && typeof ref !== 'function') {
+          ref?.current?.blur();
+        }
+      }
+    }, [isPlaying]);
 
     //set WPM
     useEffect(() => {
