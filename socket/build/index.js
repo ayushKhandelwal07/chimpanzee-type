@@ -20,6 +20,7 @@ exports.io = new socket_io_1.Server(server, {
         origin: [
             "http://localhost:3000",
             "https://chimpanzee-type-neon.vercel.app",
+            "http://YOUR_EC2_PUBLIC_IP:8080", // Replace with your actual EC2 public IP
         ],
         methods: ["GET", "POST"],
         credentials: true

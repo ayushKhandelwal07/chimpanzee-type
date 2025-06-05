@@ -14,8 +14,7 @@
     "format:check": "prettier -c .",
     "release": "standard-version",
     "push-release": "git push --follow-tags origin main",
-    "postbuild": "next-sitemap --config next-sitemap.config.js",
-    "postinstall": "prisma generate"
+    "postbuild": "next-sitemap --config next-sitemap.config.js"
   },
   "dependencies": {
     "@headlessui/react": "^1.6.6",
@@ -76,6 +75,6 @@
     ]
   },
   "engines": {
-    "node": "22.x"
+    "node": ">=16.x"
   }
 }
