@@ -17,7 +17,7 @@ export const io = new Server(server, {
 		origin: [
 			"http://localhost:3000",
 			"https://chimpanzee-type-neon.vercel.app",
-			"http://YOUR_EC2_PUBLIC_IP:8080", // Replace with your actual EC2 public IP
+			"https://3.109.206.179/:8080", // Replace with your actual EC2 public IP
 		],
 		methods: ["GET", "POST"],
 		credentials: true
